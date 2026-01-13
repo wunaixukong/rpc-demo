@@ -7,13 +7,11 @@ import io.netty.channel.ChannelInitializer;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.logging.LoggingHandler;
 import tech.insight.rpc.api.Add;
 import tech.insight.rpc.codec.AlinDecoder;
-import tech.insight.rpc.codec.ResponseEncoder;
+import tech.insight.rpc.codec.RequestEncoder;
 import tech.insight.rpc.exception.RpcException;
 import tech.insight.rpc.message.Request;
-import tech.insight.rpc.codec.RequestEncoder;
 import tech.insight.rpc.message.Response;
 
 import java.net.InetSocketAddress;
@@ -25,13 +23,13 @@ public class Consumer implements Add {
     private final String host;
     private final int port;
 
-    public Consumer(String host, int port){
+    public Consumer(String host, int port) {
         this.host = host;
         this.port = port;
     }
 
     @Override
-    public int add(int a, int b)  {
+    public int add(int a, int b) {
         try {
             Bootstrap bootstrap = new Bootstrap();
             CompletableFuture<Integer> completableFuture = new CompletableFuture<>();
@@ -48,10 +46,10 @@ public class Consumer implements Add {
                                 protected void channelRead0(ChannelHandlerContext ctx, Response msg) throws Exception {
                                     if (msg.getCode() == 200) {
                                         completableFuture.complete(Integer.parseInt(msg.getResult().toString()));
-                                    }else {
+                                    } else {
                                         completableFuture.completeExceptionally(new RpcException(msg.getErrorMsg()));
                                     }
-
+                                    ctx.close();
                                 }
                             });
                         }
@@ -64,7 +62,7 @@ public class Consumer implements Add {
             request.setParams(new Object[]{a, b});
             connectFuture.channel().writeAndFlush(request);
             return completableFuture.get();
-        }catch (Exception e){
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }

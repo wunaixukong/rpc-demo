@@ -8,20 +8,21 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.logging.LoggingHandler;
-import tech.insight.rpc.message.Request;
-import tech.insight.rpc.message.Response;
+import lombok.extern.slf4j.Slf4j;
 import tech.insight.rpc.codec.AlinDecoder;
 import tech.insight.rpc.codec.ResponseEncoder;
+import tech.insight.rpc.message.Request;
+import tech.insight.rpc.message.Response;
 import tech.insight.rpc.register.ProviderRegister;
 
+@Slf4j
 public class ProviderServer {
 
     private final int port;
 
-    private  EventLoopGroup bossGroup;
+    private EventLoopGroup bossGroup;
 
-    private  EventLoopGroup workerGroup;
+    private EventLoopGroup workerGroup;
 
     private ProviderRegister register;
 
@@ -30,7 +31,7 @@ public class ProviderServer {
         this.register = new ProviderRegister();
     }
 
-    public void start(){
+    public void start() {
         try {
             bossGroup = new NioEventLoopGroup();
             workerGroup = new NioEventLoopGroup(4);
@@ -48,26 +49,26 @@ public class ProviderServer {
                     });
 
             bootstrap.bind(port).sync();
-        }catch (Throwable e) {
+        } catch (Throwable e) {
             throw new RuntimeException("服务器启动异常");
         }
 
     }
 
-    public class ProviderHandler extends SimpleChannelInboundHandler<Request>{
+    public class ProviderHandler extends SimpleChannelInboundHandler<Request> {
 
         @Override
         protected void channelRead0(ChannelHandlerContext ctx, Request request) throws Exception {
             ProviderRegister.ServerInstanceWrapper<?> server = register.findServer(request.getServiceName());
             Response response;
-            if (server == null){
+            if (server == null) {
                 response = Response.fail(String.format("%s 服务没有找到", request.getServiceName()));
                 ctx.writeAndFlush(response);
                 return;
             }
             Object result = null;
             try {
-                result = server.invoke(request.getMethodName(),request.getParameterTypes(),request.getParams());
+                result = server.invoke(request.getMethodName(), request.getParameterTypes(), request.getParams());
                 response = Response.success(result);
             } catch (Exception e) {
                 response = Response.fail(e.getMessage());
@@ -77,25 +78,25 @@ public class ProviderServer {
 
         @Override
         public void channelActive(ChannelHandlerContext ctx) throws Exception {
-
+            log.info("{}已连接", ctx.channel().remoteAddress());
         }
 
         @Override
-        public void channelRegistered(ChannelHandlerContext ctx) throws Exception {
-            super.channelRegistered(ctx);
+        public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+            log.info("{}断开连接", ctx.channel().remoteAddress());
         }
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-            super.exceptionCaught(ctx, cause);
+            log.error("{}出现异常", ctx.channel().remoteAddress(), cause);
         }
     }
 
-    public <I> void register(Class<I> serverInterface,I serverInstance) throws IllegalAccessException {
-        register.register(serverInterface,serverInstance);
+    public <I> void register(Class<I> serverInterface, I serverInstance) throws IllegalAccessException {
+        register.register(serverInterface, serverInstance);
     }
 
-    public void stop(){
+    public void stop() {
         if (bossGroup != null) {
             bossGroup.shutdownGracefully();
         }
