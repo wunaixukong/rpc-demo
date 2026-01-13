@@ -11,6 +11,7 @@ import io.netty.handler.logging.LoggingHandler;
 import tech.insight.rpc.api.Add;
 import tech.insight.rpc.codec.AlinDecoder;
 import tech.insight.rpc.codec.ResponseEncoder;
+import tech.insight.rpc.exception.RpcException;
 import tech.insight.rpc.message.Request;
 import tech.insight.rpc.codec.RequestEncoder;
 import tech.insight.rpc.message.Response;
@@ -45,7 +46,12 @@ public class Consumer implements Add {
                             ch.pipeline().addLast(new SimpleChannelInboundHandler<Response>() {
                                 @Override
                                 protected void channelRead0(ChannelHandlerContext ctx, Response msg) throws Exception {
-                                    completableFuture.complete(Integer.parseInt(msg.getResult().toString()));
+                                    if (msg.getCode() == 200) {
+                                        completableFuture.complete(Integer.parseInt(msg.getResult().toString()));
+                                    }else {
+                                        completableFuture.completeExceptionally(new RpcException(msg.getErrorMsg()));
+                                    }
+
                                 }
                             });
                         }

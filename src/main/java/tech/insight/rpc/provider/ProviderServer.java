@@ -43,16 +43,7 @@ public class ProviderServer {
 //                            ch.pipeline().addLast(new LoggingHandler());
                             ch.pipeline().addLast(new AlinDecoder());
                             ch.pipeline().addLast(new ResponseEncoder());
-                            ch.pipeline().addLast(new SimpleChannelInboundHandler<Request>() {
-                                @Override
-                                protected void channelRead0(ChannelHandlerContext ctx, Request request) throws Exception {
-                                    ProviderRegister.ServerInstanceWrapper<?> server = register.findServer(request.getServiceName());
-                                    Object result = server.invoke(request.getMethodName(),request.getParameterTypes(),request.getParams());
-                                    Response response = new Response();
-                                    response.setResult(result);
-                                    ctx.channel().writeAndFlush(response);
-                                }
-                            });
+                            ch.pipeline().addLast(new ProviderHandler());
                         }
                     });
 
@@ -61,6 +52,43 @@ public class ProviderServer {
             throw new RuntimeException("服务器启动异常");
         }
 
+    }
+
+    public class ProviderHandler extends SimpleChannelInboundHandler<Request>{
+
+        @Override
+        protected void channelRead0(ChannelHandlerContext ctx, Request request) throws Exception {
+            ProviderRegister.ServerInstanceWrapper<?> server = register.findServer(request.getServiceName());
+            Response response;
+            if (server == null){
+                response = Response.fail(String.format("%s 服务没有找到", request.getServiceName()));
+                ctx.writeAndFlush(response);
+                return;
+            }
+            Object result = null;
+            try {
+                result = server.invoke(request.getMethodName(),request.getParameterTypes(),request.getParams());
+                response = Response.success(result);
+            } catch (Exception e) {
+                response = Response.fail(e.getMessage());
+            }
+            ctx.writeAndFlush(response);
+        }
+
+        @Override
+        public void channelActive(ChannelHandlerContext ctx) throws Exception {
+
+        }
+
+        @Override
+        public void channelRegistered(ChannelHandlerContext ctx) throws Exception {
+            super.channelRegistered(ctx);
+        }
+
+        @Override
+        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+            super.exceptionCaught(ctx, cause);
+        }
     }
 
     public <I> void register(Class<I> serverInterface,I serverInstance) throws IllegalAccessException {
