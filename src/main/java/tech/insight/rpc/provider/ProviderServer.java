@@ -62,16 +62,17 @@ public class ProviderServer {
             ProviderRegister.ServerInstanceWrapper<?> server = register.findServer(request.getServiceName());
             Response response;
             if (server == null) {
-                response = Response.fail(String.format("%s 服务没有找到", request.getServiceName()));
+                response = Response.fail(String.format("%s 服务没有找到", request.getServiceName()),request.getRequestId());
                 ctx.writeAndFlush(response);
                 return;
             }
             Object result = null;
             try {
                 result = server.invoke(request.getMethodName(), request.getParameterTypes(), request.getParams());
-                response = Response.success(result);
+                log.info("{}服务调用了{},result={}",request.getServiceName(),request.getMethodName(),result);
+                response = Response.success(result,request.getRequestId());
             } catch (Exception e) {
-                response = Response.fail(e.getMessage());
+                response = Response.fail(e.getMessage(),request.getRequestId());
             }
             ctx.writeAndFlush(response);
         }
