@@ -6,7 +6,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class ProviderRegister {
 
-    private Map<String, ServerInstanceWrapper> serverInstanceMap = new ConcurrentHashMap<>();
+    // 这个地方的泛型应该怎么加呢
+    private final Map<String, ServerInstanceWrapper> serverInstanceMap = new ConcurrentHashMap<>();
 
     public <I> void register(Class<I> serverInterface,I serverInstance) throws IllegalAccessException {
         if (!serverInterface.isInterface()) {

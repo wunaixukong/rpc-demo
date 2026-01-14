@@ -24,7 +24,7 @@ public class ProviderServer {
 
     private EventLoopGroup workerGroup;
 
-    private ProviderRegister register;
+    private final ProviderRegister register;
 
     public ProviderServer(int port) {
         this.port = port;

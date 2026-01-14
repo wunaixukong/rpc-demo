@@ -4,9 +4,16 @@ import tech.insight.rpc.api.Add;
 
 public class ConsumerApp {
     public static void main(String[] args) throws Exception {
-        Add consumer = new Consumer("localhost", 8888);
-        System.out.println(consumer.add(1, 2));
-        System.out.println(consumer.add(10, 2));
-        System.out.println(consumer.add(13, 2));
+
+        ConsumerProxyFactory factory = new ConsumerProxyFactory();
+        for (int i = 0; i < 10; i++) {
+            Add consumerProxy = factory.createConsumerProxy(Add.class);
+
+
+            System.out.println(consumerProxy.add(1, 2));
+            System.out.println(consumerProxy.add(10, 2));
+            System.out.println(consumerProxy.add(13, 2));
+        }
+
     }
 }

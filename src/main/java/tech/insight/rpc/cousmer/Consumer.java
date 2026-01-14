@@ -83,4 +83,9 @@ public class Consumer implements Add {
             throw new RuntimeException(e);
         }
     }
+
+    @Override
+    public int minus(int a, int b) {
+        return 0;
+    }
 }
