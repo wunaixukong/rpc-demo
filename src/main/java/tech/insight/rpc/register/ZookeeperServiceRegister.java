@@ -16,12 +16,21 @@ public class ZookeeperServiceRegister implements ServiceRegister {
 
     private CuratorFramework client;
 
+    private final RegisterConfig registerConfig;
+
+    private final static String BAST_PATH = "/alin-service";
+
     private ServiceDiscovery<ServiceMetaData> serviceDiscovery;
+
+
+    public ZookeeperServiceRegister(RegisterConfig registerConfig) {
+        this.registerConfig = registerConfig;
+    }
 
     @Override
     public void init() throws Exception {
         client = CuratorFrameworkFactory.builder().
-                connectString("127.0.0.1:2181")
+                connectString(registerConfig.getConnectString())
                 .sessionTimeoutMs(5000)
                 .connectionTimeoutMs(3000)
                 .retryPolicy(new ExponentialBackoffRetry(1000, 3))
@@ -30,12 +39,13 @@ public class ZookeeperServiceRegister implements ServiceRegister {
 
         serviceDiscovery = ServiceDiscoveryBuilder
                 .builder(ServiceMetaData.class)
-                .basePath("/alin-service")
+                .basePath(BAST_PATH)
                 .client(client)
                 .serializer(new JsonInstanceSerializer<>(ServiceMetaData.class))
                 .build();
 
         serviceDiscovery.start();
+        log.info("zookeeper init success");
     }
 
     @Override
@@ -60,7 +70,7 @@ public class ZookeeperServiceRegister implements ServiceRegister {
             return serviceDiscovery.queryForInstances(serviceName)
                     .stream().map(this::builderMetaData).toList();
         } catch (Exception e) {
-            log.error("没有找到provider{}",serviceName, e);
+            log.error("没有找到provider:{}",serviceName, e);
         }
         return List.of();
     }

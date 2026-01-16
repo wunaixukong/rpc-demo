@@ -9,7 +9,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class ConnectManage {
 
-    // 这里加 final 有什么效果或者说加不加有什么区别?
     private final Map<String,ChannelWrapper> connectMap = new ConcurrentHashMap<>();
 
     private final Bootstrap bootstrap;

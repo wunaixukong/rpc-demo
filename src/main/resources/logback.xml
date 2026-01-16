@@ -11,6 +11,7 @@
     </appender>
 
     <logger name="cloub.alin" level="DEBUG" />
+    <logger name="org.apache.zookeeper.ZooKeeper" level="WARN" />
 
     <logger name="io.netty.handler.logging.LoggingHandler" level="DEBUG" />
 

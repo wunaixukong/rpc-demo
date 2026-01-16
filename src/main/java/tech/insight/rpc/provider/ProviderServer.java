@@ -13,22 +13,29 @@ import tech.insight.rpc.codec.AlinDecoder;
 import tech.insight.rpc.codec.ResponseEncoder;
 import tech.insight.rpc.message.Request;
 import tech.insight.rpc.message.Response;
-import tech.insight.rpc.register.ProviderRegister;
+import tech.insight.rpc.register.*;
 
 @Slf4j
 public class ProviderServer {
 
     private final int port;
 
+    private final String host;
+
+    private final ProviderRegister register;
+
+    private final ServiceRegister serviceRegister;
+
     private EventLoopGroup bossGroup;
 
     private EventLoopGroup workerGroup;
 
-    private final ProviderRegister register;
-
-    public ProviderServer(int port) {
+    public ProviderServer(String host, int port, RegisterConfig registerConfig) throws Exception {
         this.port = port;
+        this.host = host;
         this.register = new ProviderRegister();
+        this.serviceRegister = RegisterServerFactory.createRegisterServer(registerConfig);
+        serviceRegister.init();
     }
 
     public void start() {
@@ -49,10 +56,19 @@ public class ProviderServer {
                     });
 
             bootstrap.bind(port).sync();
+            register.allServerName().stream().map(this::buildMetaData).forEach(serviceRegister::registerServer);
         } catch (Throwable e) {
             throw new RuntimeException("服务器启动异常");
         }
 
+    }
+
+    public ServiceMetaData buildMetaData(String serviceName) {
+        ServiceMetaData metaData = new ServiceMetaData();
+        metaData.setServiceName(serviceName);
+        metaData.setHost(host);
+        metaData.setPort(port);
+        return metaData;
     }
 
     public class ProviderHandler extends SimpleChannelInboundHandler<Request> {
@@ -62,17 +78,17 @@ public class ProviderServer {
             ProviderRegister.ServerInstanceWrapper<?> server = register.findServer(request.getServiceName());
             Response response;
             if (server == null) {
-                response = Response.fail(String.format("%s 服务没有找到", request.getServiceName()),request.getRequestId());
+                response = Response.fail(String.format("%s 服务没有找到", request.getServiceName()), request.getRequestId());
                 ctx.writeAndFlush(response);
                 return;
             }
             Object result = null;
             try {
                 result = server.invoke(request.getMethodName(), request.getParameterTypes(), request.getParams());
-                log.info("{}服务调用了{},result={}",request.getServiceName(),request.getMethodName(),result);
-                response = Response.success(result,request.getRequestId());
+                log.info("{}服务调用了{},result={}", request.getServiceName(), request.getMethodName(), result);
+                response = Response.success(result, request.getRequestId());
             } catch (Exception e) {
-                response = Response.fail(e.getMessage(),request.getRequestId());
+                response = Response.fail(e.getMessage(), request.getRequestId());
             }
             ctx.writeAndFlush(response);
         }

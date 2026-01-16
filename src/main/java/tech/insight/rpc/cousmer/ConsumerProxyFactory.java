@@ -14,10 +14,13 @@ import tech.insight.rpc.codec.RequestEncoder;
 import tech.insight.rpc.exception.RpcException;
 import tech.insight.rpc.message.Request;
 import tech.insight.rpc.message.Response;
+import tech.insight.rpc.register.ServiceMetaData;
+import tech.insight.rpc.register.ServiceRegister;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,10 +32,17 @@ public class ConsumerProxyFactory {
 
     private final ConnectManage connectManage = new ConnectManage(createBootstrap());
 
+    private final ServiceRegister serviceRegister;
+
+    public ConsumerProxyFactory(ServiceRegister serviceRegister) throws Exception {
+        this.serviceRegister = serviceRegister;
+        serviceRegister.init();
+    }
+
 
     @SuppressWarnings("unchecked")
-    public <I> I createConsumerProxy(Class<I> classServer){
-        return (I) Proxy.newProxyInstance(Thread.currentThread().getContextClassLoader(), new Class[]{classServer}, new InvocationHandler() {
+    public <I> I createConsumerProxy(Class<I> interfaceClass){
+        return (I) Proxy.newProxyInstance(Thread.currentThread().getContextClassLoader(), new Class[]{interfaceClass}, new InvocationHandler() {
             @Override
             public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
                 if (method.getDeclaringClass() == Object.class) {
@@ -50,15 +60,26 @@ public class ConsumerProxyFactory {
 
 
                 try {
-                    Channel channel = connectManage.findChannel("localhost", 8888);
                     CompletableFuture<Response> completableFuture = new CompletableFuture<>();
+                    List<ServiceMetaData> servers = serviceRegister.findServers(interfaceClass.getName());
+                    if (servers.isEmpty()) {
+                        log.error("{}服务找不到", interfaceClass.getName());
+                        throw new RpcException(interfaceClass.getName() + "找不到");
+                    }
+                    ServiceMetaData metaData = servers.get(0);
+                    Channel channel = connectManage.findChannel(metaData.getHost(), metaData.getPort());
                     Request request = new Request();
                     request.setMethodName(method.getName());
-                    request.setServiceName(Add.class.getCanonicalName());
+                    request.setServiceName(interfaceClass.getName());
                     request.setParameterTypes(method.getParameterTypes());
                     request.setParams(args);
                     inFlightRequestMap.put(request.getRequestId(), completableFuture);
-                    channel.writeAndFlush(request);
+                    channel.writeAndFlush(request).addListener(f ->{
+                        if (!f.isSuccess()) {
+                            inFlightRequestMap.remove(request.getRequestId());
+                            completableFuture.completeExceptionally(f.cause());
+                        }
+                    });
                     Response response = completableFuture.get(3, TimeUnit.SECONDS);
                     if (response.getCode() == 200) {
                         return response.getResult();
