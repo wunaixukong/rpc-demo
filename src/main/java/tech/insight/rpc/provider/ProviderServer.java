@@ -18,24 +18,21 @@ import tech.insight.rpc.register.*;
 @Slf4j
 public class ProviderServer {
 
-    private final int port;
-
-    private final String host;
-
     private final ProviderRegister register;
 
-    private final ServiceRegister serviceRegister;
+    private final ServiceRegistry serviceRegistry;
+
+    private final ProviderServerProperty config;
 
     private EventLoopGroup bossGroup;
 
     private EventLoopGroup workerGroup;
 
-    public ProviderServer(String host, int port, RegisterConfig registerConfig) throws Exception {
-        this.port = port;
-        this.host = host;
+    public ProviderServer(ProviderServerProperty config) throws Exception {
+        this.config = config;
         this.register = new ProviderRegister();
-        this.serviceRegister = RegisterServerFactory.createRegisterServer(registerConfig);
-        serviceRegister.init();
+        this.serviceRegistry = new DefaultRegistryServer();
+        serviceRegistry.init(config.getRegisterConfig());
     }
 
     public void start() {
@@ -55,8 +52,8 @@ public class ProviderServer {
                         }
                     });
 
-            bootstrap.bind(port).sync();
-            register.allServerName().stream().map(this::buildMetaData).forEach(serviceRegister::registerServer);
+            bootstrap.bind(config.getHost(),config.getPort()).sync();
+            register.allServerName().stream().map(this::buildMetaData).forEach(serviceRegistry::registerServer);
         } catch (Throwable e) {
             throw new RuntimeException("服务器启动异常");
         }
@@ -66,8 +63,8 @@ public class ProviderServer {
     public ServiceMetaData buildMetaData(String serviceName) {
         ServiceMetaData metaData = new ServiceMetaData();
         metaData.setServiceName(serviceName);
-        metaData.setHost(host);
-        metaData.setPort(port);
+        metaData.setHost(config.getHost());
+        metaData.setPort(config.getPort());
         return metaData;
     }
 

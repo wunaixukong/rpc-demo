@@ -12,23 +12,16 @@ import org.apache.curator.x.discovery.details.JsonInstanceSerializer;
 import java.util.List;
 
 @Slf4j
-public class ZookeeperServiceRegister implements ServiceRegister {
+public class ZookeeperServiceRegistry implements ServiceRegistry {
 
     private CuratorFramework client;
-
-    private final RegisterConfig registerConfig;
 
     private final static String BAST_PATH = "/alin-service";
 
     private ServiceDiscovery<ServiceMetaData> serviceDiscovery;
 
-
-    public ZookeeperServiceRegister(RegisterConfig registerConfig) {
-        this.registerConfig = registerConfig;
-    }
-
     @Override
-    public void init() throws Exception {
+    public void init(RegistryConfig registerConfig) throws Exception {
         client = CuratorFrameworkFactory.builder().
                 connectString(registerConfig.getConnectString())
                 .sessionTimeoutMs(5000)
@@ -65,17 +58,9 @@ public class ZookeeperServiceRegister implements ServiceRegister {
     }
 
     @Override
-    public List<ServiceMetaData> findServers(String serviceName) {
-        try {
-            return serviceDiscovery.queryForInstances(serviceName)
-                    .stream().map(this::builderMetaData).toList();
-        } catch (Exception e) {
-            log.error("没有找到provider:{}",serviceName, e);
-        }
-        return List.of();
+    public List<ServiceMetaData> findServers(String serviceName) throws Exception {
+        return serviceDiscovery.queryForInstances(serviceName)
+                .stream().map(ServiceInstance::getPayload).toList();
     }
 
-    private ServiceMetaData builderMetaData(ServiceInstance<ServiceMetaData> serviceInstance) {
-        return serviceInstance.getPayload();
-    }
 }

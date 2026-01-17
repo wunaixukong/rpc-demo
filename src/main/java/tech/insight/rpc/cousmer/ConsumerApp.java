@@ -1,20 +1,20 @@
 package tech.insight.rpc.cousmer;
 
 import tech.insight.rpc.api.Add;
-import tech.insight.rpc.register.RegisterConfig;
-import tech.insight.rpc.register.RegisterServerFactory;
-import tech.insight.rpc.register.ServiceRegister;
-import tech.insight.rpc.register.ZookeeperServiceRegister;
+import tech.insight.rpc.register.RegistryConfig;
 
 public class ConsumerApp {
     public static void main(String[] args) throws Exception {
 
-        RegisterConfig registerConfig = new RegisterConfig();
+        RegistryConfig registerConfig = new RegistryConfig();
         registerConfig.setRegisterType("zookeeper");
         registerConfig.setConnectString("127.0.0.1:2181");
-        ServiceRegister registerServer = RegisterServerFactory.createRegisterServer(registerConfig);
-        ConsumerProxyFactory factory = new ConsumerProxyFactory(registerServer);
 
+        ConsumerProperty property = new ConsumerProperty();
+        property.setWorkThreadNum(4);
+        property.setWaitingTime(3000L);
+        property.setRegisterConfig(registerConfig);
+        ConsumerProxyFactory factory = new ConsumerProxyFactory(property);
         Add consumerProxy = factory.createConsumerProxy(Add.class);
 
         while (true){

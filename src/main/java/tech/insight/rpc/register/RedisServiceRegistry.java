@@ -5,9 +5,9 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.List;
 
 @Slf4j
-public class RedisServiceRegister implements ServiceRegister{
+public class RedisServiceRegistry implements ServiceRegistry {
     @Override
-    public void init() throws Exception {
+    public void init(RegistryConfig config) throws Exception {
         log.warn("redis 注册中心尚未实现");
     }
 
