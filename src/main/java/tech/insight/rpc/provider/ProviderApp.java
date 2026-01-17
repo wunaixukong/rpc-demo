@@ -10,7 +10,7 @@ public class ProviderApp {
         registerConfig.setConnectString("127.0.0.1:2181");
         ProviderServerProperty config = new ProviderServerProperty();
         config.setHost("127.0.0.1");
-        config.setPort(8888);
+        config.setPort(8887);
         config.setRegisterConfig(registerConfig);
         ProviderServer server = new ProviderServer(config);
         server.register(Add.class, new AddImpl());

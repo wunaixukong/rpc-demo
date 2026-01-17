@@ -38,7 +38,6 @@ public class ZookeeperServiceRegistry implements ServiceRegistry {
                 .build();
 
         serviceDiscovery.start();
-        log.info("zookeeper init success");
     }
 
     @Override

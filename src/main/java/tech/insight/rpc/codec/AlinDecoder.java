@@ -23,21 +23,28 @@ public class AlinDecoder extends LengthFieldBasedFrameDecoder {
     @Override
     protected Object decode(ChannelHandlerContext ctx, ByteBuf in) throws Exception {
         ByteBuf frame = (ByteBuf) super.decode(ctx, in);
-        byte[] magic = new byte[Message.MAGIC.length];
-        frame.readBytes(magic);
-        if (!Arrays.equals(magic, Message.MAGIC)) {
-            throw new IllegalAccessException("魔数不对!");
+        if (frame == null) {
+            return null;
         }
-        byte type = frame.readByte();
-        byte[] body = new byte[frame.readableBytes()];
-        frame.readBytes(body);
-        if (Objects.equals(type,Message.Type.REQUEST.code)) {
-            return deserialzeRequest(body);
+        try {
+            byte[] magic = new byte[Message.MAGIC.length];
+            frame.readBytes(magic);
+            if (!Arrays.equals(magic, Message.MAGIC)) {
+                throw new IllegalAccessException("魔数不对!");
+            }
+            byte type = frame.readByte();
+            byte[] body = new byte[frame.readableBytes()];
+            frame.readBytes(body);
+            if (Objects.equals(type, Message.Type.REQUEST.code)) {
+                return deserialzeRequest(body);
+            }
+            if (Objects.equals(type, Message.Type.RESPONSE.code)) {
+                return deserialzeResponse(body);
+            }
+            throw new IllegalAccessException("消息类型不支持," + type);
+        }finally {
+            frame.release();
         }
-        if (Objects.equals(type,Message.Type.RESPONSE.code)) {
-            return deserialzeResponse(body);
-        }
-        throw new IllegalAccessException("消息类型不支持," + type);
     }
 
     private Response deserialzeResponse(byte[] body) {

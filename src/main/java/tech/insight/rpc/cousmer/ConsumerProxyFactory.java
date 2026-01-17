@@ -12,6 +12,8 @@ import tech.insight.rpc.api.Add;
 import tech.insight.rpc.codec.AlinDecoder;
 import tech.insight.rpc.codec.RequestEncoder;
 import tech.insight.rpc.exception.RpcException;
+import tech.insight.rpc.loadbalance.LoadBalance;
+import tech.insight.rpc.loadbalance.RoundRobinLoadBalance;
 import tech.insight.rpc.message.Request;
 import tech.insight.rpc.message.Response;
 import tech.insight.rpc.register.*;
@@ -33,6 +35,8 @@ public class ConsumerProxyFactory {
 
     private final ConsumerProperty property;
 
+    private final LoadBalance loadBalance;
+
     public ConsumerProxyFactory(ConsumerProperty property) throws Exception {
         RegistryConfig registerConfig = property.getRegisterConfig();
         serviceRegistry = new DefaultRegistryServer();
@@ -40,6 +44,7 @@ public class ConsumerProxyFactory {
         this.property = property;
         this.connectManage =  new ConnectManage(createBootstrap(property));
         this.inFlightRequestMap = new ConcurrentHashMap<>();
+        this.loadBalance = property.getLoadBalance();
     }
 
 
@@ -67,12 +72,12 @@ public class ConsumerProxyFactory {
 
             try {
                 CompletableFuture<Response> completableFuture = new CompletableFuture<>();
-                List<ServiceMetaData> servers = serviceRegistry.findServers(interfaceClass.getName());
-                if (servers.isEmpty()) {
-                    log.error("{}服务找不到", interfaceClass.getName());
+                List<ServiceMetaData> serviceList = serviceRegistry.findServers(interfaceClass.getName());
+                if (serviceList.isEmpty()) {
+                    log.error("在{}中找不到{}", serviceRegistry.getClass(),interfaceClass.getName());
                     throw new RpcException(interfaceClass.getName() + "找不到");
                 }
-                ServiceMetaData metaData = servers.get(0);
+                ServiceMetaData metaData = loadBalance.select(serviceList);
                 Channel channel = connectManage.findChannel(metaData.getHost(), metaData.getPort());
                 Request request = builderRequest(method, args);
                 inFlightRequestMap.put(request.getRequestId(), completableFuture);

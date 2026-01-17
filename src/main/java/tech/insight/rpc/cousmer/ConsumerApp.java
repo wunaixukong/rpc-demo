@@ -1,6 +1,7 @@
 package tech.insight.rpc.cousmer;
 
 import tech.insight.rpc.api.Add;
+import tech.insight.rpc.loadbalance.RoundRobinLoadBalance;
 import tech.insight.rpc.register.RegistryConfig;
 
 public class ConsumerApp {
@@ -14,11 +15,16 @@ public class ConsumerApp {
         property.setWorkThreadNum(4);
         property.setWaitingTime(3000L);
         property.setRegisterConfig(registerConfig);
+        property.setLoadBalance(new RoundRobinLoadBalance());
         ConsumerProxyFactory factory = new ConsumerProxyFactory(property);
         Add consumerProxy = factory.createConsumerProxy(Add.class);
 
         while (true){
-            System.out.println(consumerProxy.add(1, 2));
+            try {
+                System.out.println(consumerProxy.add(1, 2));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
             Thread.sleep(1000);
         }
 
