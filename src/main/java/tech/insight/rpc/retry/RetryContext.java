@@ -1,6 +1,7 @@
 package tech.insight.rpc.retry;
 
 import lombok.Data;
+import tech.insight.rpc.loadbalance.LoadBalance;
 import tech.insight.rpc.message.Response;
 import tech.insight.rpc.register.ServiceMetaData;
 
@@ -16,6 +17,8 @@ public class RetryContext {
     private long methodTimeoutMs;
 
     private long requestTimeoutMs;
+
+    private LoadBalance loadBalance;
 
     private List<ServiceMetaData> serviceMetaData;
 

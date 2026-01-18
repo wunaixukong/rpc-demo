@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import tech.insight.rpc.exception.RpcException;
 import tech.insight.rpc.message.Response;
 
+import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -12,6 +13,8 @@ import java.util.concurrent.TimeoutException;
 public class RetrySeam implements RetryPolicy {
 
     final int retryMax = 3;
+
+    private static final Random random = new Random();
 
     @Override
     public Response retry(RetryContext retryContext) throws Exception {
@@ -45,6 +48,6 @@ public class RetrySeam implements RetryPolicy {
     }
 
     private long nextDelay(int retryCount) {
-        return 100L * (1 << retryCount);
+        return 100L * (1 << retryCount) + random.nextInt(0,50);
     }
 }

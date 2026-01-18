@@ -20,9 +20,7 @@ import tech.insight.rpc.loadbalance.RoundRobinLoadBalance;
 import tech.insight.rpc.message.Request;
 import tech.insight.rpc.message.Response;
 import tech.insight.rpc.register.*;
-import tech.insight.rpc.retry.RetryContext;
-import tech.insight.rpc.retry.RetryPolicy;
-import tech.insight.rpc.retry.RetrySeam;
+import tech.insight.rpc.retry.*;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -69,6 +67,8 @@ public class ConsumerProxyFactory {
     private RetryPolicy createRetryPolicy(String retryType) {
         return switch (retryType) {
             case "retrySeam" -> new RetrySeam();
+            case "failover" -> new FailoverRetryPolicy();
+            case "forking" -> new ForkingRetryPolicy();
             default -> throw new IllegalArgumentException(retryType + "类型不支持");
         };
     }
@@ -118,7 +118,9 @@ public class ConsumerProxyFactory {
                 retryContext.setMethodTimeoutMs(methodTimeoutMs);
                 retryContext.setRequestTimeoutMs(requestTimeoutMs);
                 retryContext.setFailService(provider);
-                retryContext.setRequestFunction(providerService -> callRpcAsync(builderRequest(method, args), provider));
+                retryContext.setServiceMetaData(serviceList);
+                retryContext.setLoadBalance(loadBalance);
+                retryContext.setRequestFunction(providerService -> callRpcAsync(builderRequest(method, args), providerService));
                 response = retryPolicy.retry(retryContext);
             }
 

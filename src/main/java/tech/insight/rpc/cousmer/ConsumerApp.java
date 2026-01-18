@@ -16,7 +16,7 @@ public class ConsumerApp {
         property.setRequestTimeoutMs(3000L);
         property.setRegisterConfig(registerConfig);
         property.setLoadBalancePolicy("roundRobin");
-        property.setRetryPolicy("retrySeam");
+        property.setRetryPolicy("forking");
         ConsumerProxyFactory factory = new ConsumerProxyFactory(property);
         Add consumerProxy = factory.createConsumerProxy(Add.class);
 

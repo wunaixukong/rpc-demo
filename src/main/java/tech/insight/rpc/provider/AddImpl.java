@@ -9,12 +9,7 @@ import java.util.concurrent.locks.LockSupport;
 public class AddImpl implements Add {
     @Override
     public int add(int a, int b) {
-        Random random = new Random();
-        boolean b1 = random.nextBoolean();
-        System.out.println(b1);
-        if (b1) {
-            LockSupport.parkNanos(TimeUnit.SECONDS.toNanos(4));
-        }
+
         return a + b;
     }
 
