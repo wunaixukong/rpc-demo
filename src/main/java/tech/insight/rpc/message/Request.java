@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Data
 public class Request {
 
-    private AtomicInteger atomicInteger = new AtomicInteger();
+    private static final AtomicInteger atomicInteger = new AtomicInteger();
 
     private Integer requestId = atomicInteger.incrementAndGet();
 

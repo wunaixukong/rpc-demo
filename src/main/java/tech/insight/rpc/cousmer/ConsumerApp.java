@@ -13,20 +13,14 @@ public class ConsumerApp {
 
         ConsumerProperty property = new ConsumerProperty();
         property.setWorkThreadNum(4);
-        property.setWaitingTime(3000L);
+        property.setRequestTimeoutMs(3000L);
         property.setRegisterConfig(registerConfig);
-        property.setLoadBalance(new RoundRobinLoadBalance());
+        property.setLoadBalancePolicy("roundRobin");
+        property.setRetryPolicy("retrySeam");
         ConsumerProxyFactory factory = new ConsumerProxyFactory(property);
         Add consumerProxy = factory.createConsumerProxy(Add.class);
 
-        while (true){
-            try {
-                System.out.println(consumerProxy.add(1, 2));
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            Thread.sleep(1000);
-        }
+        System.out.println(consumerProxy.add(1, 2));
 
 
     }

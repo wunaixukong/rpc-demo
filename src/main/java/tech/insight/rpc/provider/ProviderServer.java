@@ -81,8 +81,14 @@ public class ProviderServer {
             }
             Object result = null;
             try {
+                long startTime = System.currentTimeMillis();
                 result = server.invoke(request.getMethodName(), request.getParameterTypes(), request.getParams());
-                log.info("{}服务调用了{},result={}", request.getServiceName(), request.getMethodName(), result);
+                log.info("{}服务调用了{},result:{},requestId:{}耗时:{}",
+                        request.getServiceName(),
+                        request.getMethodName(),
+                        result,
+                        request.getRequestId(),
+                        System.currentTimeMillis() - startTime);
                 response = Response.success(result, request.getRequestId());
             } catch (Exception e) {
                 response = Response.fail(e.getMessage(), request.getRequestId());
