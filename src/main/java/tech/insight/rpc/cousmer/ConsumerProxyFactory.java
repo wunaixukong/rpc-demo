@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
 
+
 @Slf4j
 public class ConsumerProxyFactory {
     private final Map<Integer, CompletableFuture<Response>> inFlightRequestMap;
@@ -54,6 +55,9 @@ public class ConsumerProxyFactory {
         this.inFlightRequestMap = new ConcurrentHashMap<>();
         this.loadBalance = createLoadBalance();
         this.retryPolicy = createRetryPolicy(property.getRetryPolicy());
+
+        Semaphore semaphore = new Semaphore();
+        semaphore.acquire();
     }
 
     private LoadBalance createLoadBalance() {
