@@ -1,11 +1,9 @@
 package tech.insight.rpc.cousmer;
 
 import tech.insight.rpc.api.Add;
-import tech.insight.rpc.loadbalance.RoundRobinLoadBalance;
 import tech.insight.rpc.register.RegistryConfig;
 
 import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.locks.ReentrantLock;
 
 public class ConsumerApp {
     public static void main(String[] args) throws Exception {

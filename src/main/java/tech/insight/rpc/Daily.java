@@ -1,9 +1,7 @@
 package tech.insight.rpc;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class Daily {
 
@@ -40,7 +38,71 @@ public class Daily {
 //  补码 -x   1001 = -7
 //           1000 = 8
 //        System.out.println(36 | 37);
-        minBitwiseArray(Arrays.asList(11,13,31));
+//        minBitwiseArray(Arrays.asList(11,13,31));
+//        System.out.println(climbStairs(6));
+
+        System.out.println(isIsomorphic("foo", "bar"));
+    }
+
+    /**
+     * 给定两个字符串 s 和 t ，判断它们是否是同构的。
+     *
+     * 如果 s 中的字符可以按某种映射关系替换得到 t ，那么这两个字符串是同构的。
+     *
+     * 每个出现的字符都应当映射到另一个字符，同时不改变字符的顺序。
+     * 不同字符不能映射到同一个字符上，相同字符只能映射到同一个字符上，字符可以映射到自己本身。
+     * @param s
+     * @param t
+     * @return
+     */
+    public static boolean isIsomorphic(String s, String t) {
+        //aaabbbba , bbbaaaba
+        HashMap<Character, Character> st = new HashMap<>(), ts = new HashMap<>();
+        for (int i = 0; i < s.length(); i++) {
+            char l = s.charAt(i);
+            char m = t.charAt(i);
+
+            // 如果我存过l, 那么l一定等于m
+            // add egg , 如果是l=d,那么m=g
+            if (st.containsKey(l) && st.get(l) != m ||
+                ts.containsKey(m) && ts.get(m) != l) {
+                return false;
+            }
+            st.put(l, m);
+            ts.put(m, l);
+        }
+        return true;
+    }
+
+    /**
+     * 假设你正在爬楼梯。需要 n 阶你才能到达楼顶。
+     *
+     * 每次你可以爬 1 或 2 个台阶。你有多少种不同的方法可以爬到楼顶呢？
+     * @param n
+     * @return
+     */
+    public static int climbStairs(int n) {
+        // n = 1
+        // ans[0] = 1; ans[1] = 1;
+        // n = 2
+        // ans[1] = 1; ans[2] = 1 + ans[1]; 1 + 1 = 2
+        // n =3
+        // ans[2] = 2; ans[3] = (1,1,1),(1,2),(2,1) = 3
+        // n =4
+        // ans[3] = 3 ; ans[4]= (1,1,1,1),(1,1,2),(1,2,1),(2,1,1),(2,2) = 5
+        // n =5
+        // ans[4] = 5 ; ans[5] =(1,1,1,1,1),(1,1,1,2),(1,1,2,1),(1,2,1,1),(2,1,1,1),(2,2,1),(2,1,1),(1,2,2) = 8
+        // n =6
+        // ans[5] = 8 ; ans[6] =(1,1,1,1,1,1),(1,1,1,1,2),(1,1,1,2,1),(1,1,2,1,1),(1,2,1,1,1),(2,1,1,1,1),(2,2,1,1),(2,1,2,1),(2,1,1,2),(1,2,2,1),(1,1,2,2),(1,2,1,2),(2,2,2)
+        // ans[i] = ans[i-1] + ans[i-2]
+        int[] ans = new int[n + 1];
+        ans[0] = 1;
+        ans[1] = 1;
+
+        for (int i = 2; i <= n; i++) {
+            ans[i] = ans[i - 1] + ans[i - 2];
+        }
+        return ans[n];
     }
 
     public static int[] minBitwiseArray(List<Integer> nums) {
