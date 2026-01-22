@@ -13,7 +13,9 @@ import lombok.extern.slf4j.Slf4j;
 import tech.insight.rpc.api.Add;
 import tech.insight.rpc.codec.AlinDecoder;
 import tech.insight.rpc.codec.RequestEncoder;
+import tech.insight.rpc.exception.LimitException;
 import tech.insight.rpc.exception.RpcException;
+import tech.insight.rpc.limiter.RateLimiter;
 import tech.insight.rpc.loadbalance.LoadBalance;
 import tech.insight.rpc.loadbalance.RandomLoadBalance;
 import tech.insight.rpc.loadbalance.RoundRobinLoadBalance;
@@ -32,7 +34,6 @@ import java.util.concurrent.*;
 
 @Slf4j
 public class ConsumerProxyFactory {
-    private final Map<Integer, CompletableFuture<Response>> inFlightRequestMap;
 
     private final ConnectManage connectManage;
 
@@ -44,7 +45,8 @@ public class ConsumerProxyFactory {
 
     private final RetryPolicy retryPolicy;
 
-    private final HashedWheelTimer timeOutTimer = new HashedWheelTimer(1, TimeUnit.SECONDS, 64);
+    private final InFlightRequestManage inFlightRequestManage;
+
 
     public ConsumerProxyFactory(ConsumerProperty property) throws Exception {
         RegistryConfig registerConfig = property.getRegisterConfig();
@@ -52,12 +54,9 @@ public class ConsumerProxyFactory {
         serviceRegistry.init(registerConfig);
         this.property = property;
         this.connectManage = new ConnectManage(createBootstrap(property));
-        this.inFlightRequestMap = new ConcurrentHashMap<>();
         this.loadBalance = createLoadBalance();
         this.retryPolicy = createRetryPolicy(property.getRetryPolicy());
-
-        Semaphore semaphore = new Semaphore();
-        semaphore.acquire();
+        this.inFlightRequestManage = new InFlightRequestManage(property);
     }
 
     private LoadBalance createLoadBalance() {
@@ -114,40 +113,42 @@ public class ConsumerProxyFactory {
             try {
                 response = requestFuture.get(requestTimeoutMs, TimeUnit.MILLISECONDS);
             } catch (Exception e) {
-                RetryContext retryContext = new RetryContext();
-                long methodTimeoutMs = property.getMethodTimeoutMs() - (System.currentTimeMillis() - startTime);
-                if (methodTimeoutMs <= 0 ) {
-                    throw new TimeoutException();
+                if (e instanceof ExecutionException ee && ee.getCause() instanceof LimitException limitException) {
+                    throw limitException;
                 }
-                retryContext.setMethodTimeoutMs(methodTimeoutMs);
-                retryContext.setRequestTimeoutMs(requestTimeoutMs);
-                retryContext.setFailService(provider);
-                retryContext.setServiceMetaData(serviceList);
-                retryContext.setLoadBalance(loadBalance);
-                retryContext.setRequestFunction(providerService -> callRpcAsync(builderRequest(method, args), providerService));
-                response = retryPolicy.retry(retryContext);
+                response = doRetry(method, args, startTime, requestTimeoutMs, provider, serviceList);
             }
 
             return processResponse(response);
         }
 
+        private Response doRetry(Method method, Object[] args, long startTime, long requestTimeoutMs, ServiceMetaData provider, List<ServiceMetaData> serviceList) throws Exception {
+            Response response;
+            RetryContext retryContext = new RetryContext();
+            long methodTimeoutMs = property.getMethodTimeoutMs() - (System.currentTimeMillis() - startTime);
+            if (methodTimeoutMs <= 0) {
+                throw new TimeoutException();
+            }
+            retryContext.setMethodTimeoutMs(methodTimeoutMs);
+            retryContext.setRequestTimeoutMs(requestTimeoutMs);
+            retryContext.setFailService(provider);
+            retryContext.setServiceMetaData(serviceList);
+            retryContext.setLoadBalance(loadBalance);
+            retryContext.setRequestFunction(providerService -> callRpcAsync(builderRequest(method, args), providerService));
+            response = retryPolicy.retry(retryContext);
+            return response;
+        }
+
         private CompletableFuture<Response> callRpcAsync(Request request, ServiceMetaData provider) {
-            CompletableFuture<Response> responseFuture = new CompletableFuture<>();
+            CompletableFuture<Response> responseFuture = inFlightRequestManage.inFlightRequest(request,
+                    property.getRequestTimeoutMs(),
+                    provider);
             Channel channel = connectManage.findChannel(provider.getHost(), provider.getPort());
             if (channel == null) {
                 responseFuture.completeExceptionally(new RpcException("provider 连接失败！"));
                 return responseFuture;
             }
-            inFlightRequestMap.put(request.getRequestId(), responseFuture);
 
-            Timeout timeout = timeOutTimer.newTimeout((t) -> {
-                responseFuture.completeExceptionally(new TimeoutException());
-            }, property.getRequestTimeoutMs(), TimeUnit.MILLISECONDS);
-
-            responseFuture.whenComplete((r, e) -> {
-                inFlightRequestMap.remove(request.getRequestId());
-                timeout.cancel();
-            });
             channel.writeAndFlush(request).addListener(f -> {
                 log.info("请求requestId:{}", request.getRequestId());
                 if (!f.isSuccess()) {
@@ -207,12 +208,7 @@ public class ConsumerProxyFactory {
     private class ConsumerChannelHandler extends SimpleChannelInboundHandler<Response> {
         @Override
         protected void channelRead0(ChannelHandlerContext ctx, Response response) throws Exception {
-            CompletableFuture<Response> responseFuture = inFlightRequestMap.remove(response.getRequestId());
-            if (responseFuture == null) {
-                log.error("requestId{} 找不到", response.getRequestId());
-                return;
-            }
-            responseFuture.complete(response);
+            inFlightRequestManage.completeRequest(response.getRequestId(), response);
         }
 
         @Override

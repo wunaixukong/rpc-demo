@@ -4,6 +4,9 @@ import tech.insight.rpc.api.Add;
 import tech.insight.rpc.loadbalance.RoundRobinLoadBalance;
 import tech.insight.rpc.register.RegistryConfig;
 
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.locks.ReentrantLock;
+
 public class ConsumerApp {
     public static void main(String[] args) throws Exception {
 
@@ -15,12 +18,25 @@ public class ConsumerApp {
         property.setWorkThreadNum(4);
         property.setRequestTimeoutMs(3000L);
         property.setRegisterConfig(registerConfig);
-        property.setLoadBalancePolicy("roundRobin");
-        property.setRetryPolicy("forking");
         ConsumerProxyFactory factory = new ConsumerProxyFactory(property);
         Add consumerProxy = factory.createConsumerProxy(Add.class);
 
-        System.out.println(consumerProxy.add(1, 2));
+        CyclicBarrier cyclicBarrier = new CyclicBarrier(10);
+        for (int i = 0; i < 10; i++) {
+            new Thread(() -> {
+                try {
+                    cyclicBarrier.await();
+                    System.out.println(consumerProxy.add(1, 2));
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+
+            }).start();
+        }
+
+
+
+
 
 
     }

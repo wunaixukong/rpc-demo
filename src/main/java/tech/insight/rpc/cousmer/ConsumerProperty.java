@@ -14,7 +14,11 @@ public class ConsumerProperty {
 
     private RegistryConfig registerConfig;
 
-    private String loadBalancePolicy;
+    private String loadBalancePolicy = "roundRobin";
 
-    private String retryPolicy;
+    private String retryPolicy = "forking";
+
+    private int rpcPerSecond = 10;
+
+    private int rpcPerChannel = 5;
 }
